@@ -1,5 +1,6 @@
 import pygame
 from pygame.locals import *
+import random
 
 pygame.init()
 
@@ -18,6 +19,9 @@ groundScroll = 0
 scrollSpeed = 4
 flying = False
 gameOver = False
+pipeGap = 150
+pipeFrequency = 1500 #miliseconds
+lastPipe = pygame.time.get_ticks() - pipeFrequency
 
 #load images
 bg = pygame.image.load("img/bg.png")
@@ -29,7 +33,7 @@ class Bird(pygame.sprite.Sprite):
         self.images = []
         self.index = 0
         self.counter = 0
-        for num in range(1,3):
+        for num in range(1,4):
             img = pygame.image.load(f"img/bird{num}.png")
             self.images.append(img)
         self.image = self.images[self.index]
@@ -72,7 +76,26 @@ class Bird(pygame.sprite.Sprite):
         else:
             self.image = pygame.transform.rotate(self.images[self.index], -90)
 
+class Pipe(pygame.sprite.Sprite):
+    def __init__(self, x, y, position):
+        pygame.sprite.Sprite.__init__(self)
+        self.image = pygame.image.load("img/pipe.png")
+        self.rect = self.image.get_rect()
+        #position 1 is from the top, -1 is from the bottom
+        if position == 1:
+            self.image = pygame.transform.flip(self.image, False, True)
+            self.rect.bottomleft = [x, y - int(pipeGap/2)]
+        if position == -1:
+            self.rect.topleft = [x, y + int(pipeGap/2)]
+
+    def update(self):
+        self.rect.x -= scrollSpeed
+        if self.rect.right < 0:
+            self.kill()
+        
+
 birdGroup = pygame.sprite.Group()
+pipeGroup = pygame.sprite.Group()
 
 flappy = Bird(100, screenHeight/2)
 
@@ -89,19 +112,37 @@ while(run):
     birdGroup.draw(screen)
     birdGroup.update()
 
+    pipeGroup.draw(screen)
+
     #draw ground
     screen.blit(ground, (groundScroll, 500))
 
+    #look for collisions
+    if pygame.sprite.groupcollide(birdGroup, pipeGroup, False, False) or flappy.rect.top < 0:
+        gameOver = True
+
     #check if game over
-    if flappy.rect.bottom > 500:
+    if flappy.rect.bottom >= 500:
         gameOver = True
         flying = False
 
-    #draw and scroll ground
-    if gameOver == False:
+    if gameOver == False and flying == True:
+        #generate pipes
+        timeNow = pygame.time.get_ticks()
+        if timeNow - lastPipe > pipeFrequency:
+            pipeHeight = random.randint(-100, 100)
+            bottomPipe = Pipe(screenWidth, screenHeight/2 + pipeHeight, 1)
+            topPipe = Pipe(screenWidth, screenHeight/2 + pipeHeight, -1)
+            pipeGroup.add(bottomPipe)
+            pipeGroup.add(topPipe)
+            lastPipe = timeNow
+
+        #draw and scroll ground
         groundScroll -= scrollSpeed
         if abs(groundScroll) > 35:
             groundScroll = 0
+        
+        pipeGroup.update()
 
     for event in pygame.event.get():
         if event.type == QUIT:
