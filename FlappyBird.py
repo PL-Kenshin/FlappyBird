@@ -34,10 +34,18 @@ passPipe = False
 #load images
 bg = pygame.image.load("img/bg.png")
 ground = pygame.image.load("img/ground.png")
+restartButton = pygame.image.load("img/restart.png")
 
 def drawText(text, font, textCol, x, y):
     img = font.render(text, True, textCol)
     screen.blit(img, (x, y))
+
+def resetGame():
+    pipeGroup.empty()
+    flappy.rect.x = 100
+    flappy.rect.y = int(screenHeight / 2)
+    score = 0
+    return score
 
 class Bird(pygame.sprite.Sprite):
     def __init__(self, x, y):
@@ -106,12 +114,39 @@ class Pipe(pygame.sprite.Sprite):
             self.kill()
         
 
+class Button():
+    def __init__(self, x, y, image):
+        self.image = image
+        self.rect = self.image.get_rect()
+        self.rect.topleft = (x, y)
+
+    def draw(self):
+        action = False
+
+        #get mouse position
+        pos = pygame.mouse.get_pos()
+
+        #check if mouse is over the button
+        if self.rect.collidepoint(pos):
+            if pygame.mouse.get_pressed()[0] == 1:
+                action = True
+        
+
+        #draw button
+        screen.blit(self.image, (self.rect.x, self.rect.y))
+
+        return action
+
+
 birdGroup = pygame.sprite.Group()
 pipeGroup = pygame.sprite.Group()
 
 flappy = Bird(100, screenHeight/2)
 
 birdGroup.add(flappy)
+
+#create restart button instance
+button = Button(screenWidth//2 - 50, screenHeight//2 - 50, restartButton)
 
 run = True
 while(run):
@@ -167,6 +202,13 @@ while(run):
             groundScroll = 0
         
         pipeGroup.update()
+
+
+    #check for game over reset
+    if gameOver == True:
+        if button.draw() == True:
+            gameOver = False
+            score = resetGame()
 
     for event in pygame.event.get():
         if event.type == QUIT:
